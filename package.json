@@ -1,4 +1,5 @@
 {
+  "start": "npx prisma db push && node prisma/seed.mjs && next start",
   "name": "employee-attendance-system",
   "version": "0.1.0",
   "private": true,
