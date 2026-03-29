@@ -1,49 +1,8 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id            String   @id @default(uuid())
-  employeeId    String   @unique // Custom readable ID (e.g., EMP-001)
-  email         String   @unique
-  password      String   // Hashed
-  name          String
-  role          String   @default("EMPLOYEE") // Using String for SQLite compatibility (Enums not fully supported in simple sqlite setups sometimes, but Prisma handles it. I will stick to String or simple Enum if possible. SQLite supports Enums via Prisma mapping usually but simpler is String for now or just standard Enum)
-  isActive      Boolean  @default(true)
-  spreadsheetId String?  // Link to their specific Google Sheet tab/id
-  
-  attendance    Attendance[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-model Attendance {
-  id           String    @id @default(uuid())
-  userId       String
-  date         DateTime  // For easy daily querying. SQLite stores as numeric.
-  checkIn      DateTime
-  checkOut     DateTime?
-  
-  // Location Data
-  inLatitude   Float
-  inLongitude  Float
-  inDistance   Float     // Distance from office in meters
-  inStatus     String    // "INSIDE" | "OUTSIDE"
-  
-  outLatitude  Float?
-  outLongitude Float?
-  outDistance  Float?
-  outStatus    String?
-
-  totalHours   Float?    // Calculated on check-out
-  
-  user         User      @relation(fields: [userId], references: [id])
-  
-  @@index([date])
-  @@index([userId])
+generator client {
+  provider = "prisma-client-js"
 }
