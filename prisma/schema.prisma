@@ -45,6 +45,4 @@ model Attendance {
   outDistance  Float?
   outStatus    String?
 
-  totalHours   Float?    // Calculated on check-out
-  
-  user         User      @relation(fields: [userId], references: [id])
+  totalHours   Float?    
