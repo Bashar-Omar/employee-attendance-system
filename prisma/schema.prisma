@@ -8,15 +8,17 @@ generator client {
 }
 
 model User {
-  id          String       @id @default(cuid())
-  email       String       @unique
-  password    String
-  name        String
-  role        String
-  employeeId  String       @unique
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  attendances Attendance[]
+  id            String   @id @default(uuid())
+  employeeId    String   @unique 
+  email         String   @unique
+  password      String   
+  name          String
+  role          String   @default("EMPLOYEE") 
+  isActive      Boolean  @default(true)
+  spreadsheetId String?  
+  attendance    Attendance[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 
