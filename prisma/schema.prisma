@@ -34,15 +34,4 @@ model Attendance {
 }
 
 
-  // Location Data
-  inLatitude   Float
-  inLongitude  Float
-  inDistance   Float     
-  inStatus     String    
-  
-  outLatitude  Float?
-  outLongitude Float?
-  outDistance  Float?
-  outStatus    String?
-
-  totalHours   Float?    
+ 
