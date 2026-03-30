@@ -9,7 +9,7 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
     const employee = await prisma.user.findUnique({
         where: { id },
         include: {
-            attendances: {
+            attendance: {
                 orderBy: { date: 'desc' },
                 take: 60 // Last 60 days
             }
