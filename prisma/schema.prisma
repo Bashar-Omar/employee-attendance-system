@@ -24,14 +24,20 @@ model User {
 
 
 model Attendance {
-  id        String   @id @default(cuid())
-  userId    String
-  date      DateTime
-  status    String
-  checkIn   DateTime
-  checkOut  DateTime?
-  user      User     @relation(fields: [userId], references: [id])
+  id           String   @id @default(cuid())
+  userId       String
+  date         DateTime
+  status       String   @default("PRESENT")
+  checkIn      DateTime
+  checkOut     DateTime?
+  inLatitude   Float?
+  inLongitude  Float?
+  inStatus     String?
+  inDistance    Float?
+  outLatitude  Float?
+  outLongitude Float?
+  outStatus    String?
+  outDistance   Float?
+  totalHours   Float?
+  user         User     @relation(fields: [userId], references: [id])
 }
-
-
- inLatitude   Float
