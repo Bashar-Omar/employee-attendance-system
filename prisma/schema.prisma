@@ -32,3 +32,19 @@ model Attendance {
   checkOut  DateTime?
   user      User     @relation(fields: [userId], references: [id])
 }
+
+
+  // Location Data
+  inLatitude   Float
+  inLongitude  Float
+  inDistance   Float     
+  inStatus     String    
+  
+  outLatitude  Float?
+  outLongitude Float?
+  outDistance  Float?
+  outStatus    String?
+
+  totalHours   Float?    // Calculated on check-out
+  
+  user         User      @relation(fields: [userId], references: [id])
