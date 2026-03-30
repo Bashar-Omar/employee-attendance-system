@@ -28,6 +28,7 @@ model Attendance {
   userId    String
   date      DateTime
   status    String
-
+  checkIn   DateTime
+  checkOut  DateTime?
   user      User     @relation(fields: [userId], references: [id])
 }
