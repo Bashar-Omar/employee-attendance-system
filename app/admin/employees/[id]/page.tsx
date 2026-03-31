@@ -2,6 +2,7 @@ import prisma from "@/lib/db/prisma"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ArrowLeft, Pencil, Mail, Hash, User, FileSpreadsheet, Activity } from "lucide-react"
+import { toEgyptDate, toEgyptTimeOnly } from "@/lib/utils/date"
 
 export default async function EmployeeProfilePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -116,9 +117,9 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
                             <tbody className="divide-y">
                                 {employee.attendances.map((record: any) => (
                                     <tr key={record.id} className="transition-colors hover:bg-muted/50">
-                                        <td className="p-4 px-6 align-middle font-medium">{record.date ? new Date(record.date).toLocaleDateString() : '-'}</td>
-                                        <td className="p-4 px-6 align-middle tabular-nums">{record.checkIn ? new Date(record.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                                        <td className="p-4 px-6 align-middle tabular-nums">{record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                                        <td className="p-4 px-6 align-middle font-medium">{record.date ? toEgyptDate(record.date) : '-'}</td>
+                                        <td className="p-4 px-6 align-middle tabular-nums">{record.checkIn ? toEgyptTimeOnly(record.checkIn) : '-'}</td>
+                                        <td className="p-4 px-6 align-middle tabular-nums">{record.checkOut ? toEgyptTimeOnly(record.checkOut) : '-'}</td>
                                         <td className="p-4 px-6 align-middle font-semibold">{record.totalHours ? `${record.totalHours} hrs` : '-'}</td>
                                         <td className="p-4 px-6 align-middle">
                                             <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${record.inStatus === 'INSIDE' ? 'bg-green-50 text-green-700 ring-green-600/20' : 'bg-amber-50 text-amber-700 ring-amber-600/20'}`}>

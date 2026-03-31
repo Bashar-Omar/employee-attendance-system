@@ -6,6 +6,7 @@ import { checkIn, checkOut } from "@/lib/actions/attendance"
 import { Loader2, MapPin, Clock, LogOut, Play } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CountdownTimer } from "./CountdownTimer"
+import { toEgyptTimeOnly } from "@/lib/utils/date"
 
 export default function CheckInCard({ todayRecord }: { todayRecord: any }) {
   const [loading, setLoading] = useState(false)
@@ -87,7 +88,7 @@ export default function CheckInCard({ todayRecord }: { todayRecord: any }) {
                  
                  <div className="inline-flex flex-col items-center justify-center p-4 bg-blue-50 rounded-xl border border-blue-100 w-full transition-all">
                      <span className="text-sm font-medium text-blue-600 uppercase tracking-wider mb-1">Checked In At</span>
-                     <span className="text-3xl font-bold text-blue-900 mono">{new Date(todayRecord.checkIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                     <span className="text-3xl font-bold text-blue-900 mono">{toEgyptTimeOnly(todayRecord.checkIn)}</span>
                  </div>
                  
                  <div className="flex items-center justify-center gap-2 pt-2">

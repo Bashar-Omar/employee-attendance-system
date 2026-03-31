@@ -64,6 +64,15 @@ export default function EditEmployeeForm({ employee }: { employee: any }) {
                     </label>
                     <Input id="email" name="email" type="email" required defaultValue={employee.email} className="bg-muted/30" />
                 </div>
+                <div className="space-y-2 md:col-span-2">
+                    <label htmlFor="role" className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                        <User className="h-4 w-4" /> System Role
+                    </label>
+                    <select name="role" id="role" defaultValue={employee.role || "EMPLOYEE"} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <option value="EMPLOYEE">Employee</option>
+                        <option value="ADMIN">Admin</option>
+                    </select>
+                </div>
             </div>
 
             <div className="flex items-center gap-3 p-4 border rounded-lg bg-muted/20">

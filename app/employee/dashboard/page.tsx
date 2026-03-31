@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { LogOut, History, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { toEgyptDate, toEgyptTimeOnly } from "@/lib/utils/date"
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -67,13 +68,13 @@ export default async function DashboardPage() {
                                     {history.map((record: any) => (
                                         <tr key={record.id} className="transition-colors hover:bg-muted/50">
                                             <td className="p-4 px-6 align-middle font-medium text-foreground">
-                                                {new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                {toEgyptDate(record.date)}
                                             </td>
                                             <td className="p-4 px-6 align-middle">
                                                 <div className="flex flex-col text-xs">
-                                                    <span className="font-medium text-green-700">IN: {new Date(record.checkIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                                    <span className="font-medium text-green-700">IN: {toEgyptTimeOnly(record.checkIn)}</span>
                                                     {record.checkOut && (
-                                                        <span className="text-muted-foreground">OUT: {new Date(record.checkOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                                        <span className="text-muted-foreground">OUT: {toEgyptTimeOnly(record.checkOut)}</span>
                                                     )}
                                                 </div>
                                             </td>

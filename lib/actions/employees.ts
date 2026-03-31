@@ -14,6 +14,7 @@ export async function createEmployee(data: FormData) {
   const email = data.get("email") as string
   const employeeId = data.get("employeeId") as string
   const password = data.get("password") as string
+  const role = data.get("role") as string || "EMPLOYEE"
 
   if (!name || !email || !employeeId || !password) {
       return { error: "Missing fields" }
@@ -35,7 +36,7 @@ export async function createEmployee(data: FormData) {
               email,
               employeeId,
               password: hashedPassword,
-              role: "EMPLOYEE",
+              role: role,
               spreadsheetId: sheetName || name // Store sheet name/ID
           }
       })
@@ -54,6 +55,7 @@ export async function updateEmployee(id: string, data: FormData) {
   const name = data.get("name") as string
   const email = data.get("email") as string
   const employeeId = data.get("employeeId") as string
+  const role = data.get("role") as string || "EMPLOYEE"
   const isActive = data.get("isActive") === "on"
 
   try {
@@ -63,6 +65,7 @@ export async function updateEmployee(id: string, data: FormData) {
               name,
               email,
               employeeId,
+              role: role,
               isActive
           }
       })

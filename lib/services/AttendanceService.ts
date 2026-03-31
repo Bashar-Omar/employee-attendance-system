@@ -1,6 +1,7 @@
 import prisma from "@/lib/db/prisma"
 import { getLocationStatus } from "./LocationService"
 import { GoogleSheetsService } from "./GoogleSheetsService"
+import { getEgyptDateString } from "@/lib/utils/date"
 
 
 export class AttendanceService {
@@ -10,13 +11,10 @@ export class AttendanceService {
   static async checkIn(userId: string, latitude: number, longitude: number) {
     if (!userId) throw new Error("User ID is required for check-in")
     // 1. Check for active session (Checked In but not Checked Out)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    // SQLite/MySQL standard date comparison
-    const startOfDay = new Date(today)
-    const endOfDay = new Date(today)
-    endOfDay.setHours(23, 59, 59, 999)
+    // Use Egypt local date to avoid UTC midnight drift (UTC+2 timezone)
+    const egyptDateStr = getEgyptDateString() // e.g. "2024-03-15"
+    const startOfDay = new Date(`${egyptDateStr}T00:00:00+02:00`)
+    const endOfDay = new Date(`${egyptDateStr}T23:59:59+02:00`)
 
     // Find the LATEST record for today
     const latestRecord = await prisma.attendance.findFirst({
@@ -75,12 +73,10 @@ export class AttendanceService {
    */
   static async checkOut(userId: string, latitude: number, longitude: number) {
     if (!userId) throw new Error("User ID is required for check-out")
-     // 1. Find today's LATEST record
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const startOfDay = new Date(today)
-    const endOfDay = new Date(today)
-    endOfDay.setHours(23, 59, 59, 999)
+    // 1. Find today's LATEST record — use Egypt local date to avoid UTC midnight drift
+    const egyptDateStr = getEgyptDateString()
+    const startOfDay = new Date(`${egyptDateStr}T00:00:00+02:00`)
+    const endOfDay = new Date(`${egyptDateStr}T23:59:59+02:00`)
 
     const record = await prisma.attendance.findFirst({
       where: {
@@ -152,11 +148,10 @@ export class AttendanceService {
 
   static async getTodayStatus(userId: string) {
     if (!userId) return null;
-     const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const startOfDay = new Date(today)
-    const endOfDay = new Date(today)
-    endOfDay.setHours(23, 59, 59, 999)
+    // Use Egypt local date to avoid UTC midnight drift
+    const egyptDateStr = getEgyptDateString()
+    const startOfDay = new Date(`${egyptDateStr}T00:00:00+02:00`)
+    const endOfDay = new Date(`${egyptDateStr}T23:59:59+02:00`)
 
     const record = await prisma.attendance.findFirst({
       where: {
