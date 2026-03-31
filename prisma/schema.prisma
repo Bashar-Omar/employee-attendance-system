@@ -101,13 +101,13 @@ model Attendance {
   deductionRuleId  String?   // which rule was matched (for audit trail)
   deductionValue   Float?    // actual EGP amount deducted that day (stored for audit)
   notes            String?
-  user             User      @relation(fields: [userId], references: [id])
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model MonthlySummary {
   id                  String    @id @default(cuid())
   userId              String
-  user                User      @relation(fields: [userId], references: [id])
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   month               Int
   year                Int
   workingDays         Int       @default(0)
