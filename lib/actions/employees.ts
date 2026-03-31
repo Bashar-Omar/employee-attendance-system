@@ -10,9 +10,9 @@ export async function createEmployee(data: FormData) {
   const session = await auth()
   if (session?.user?.role !== "ADMIN") return { error: "Unauthorized" }
 
-  const name = data.get("name") as string
-  const email = data.get("email") as string
-  const employeeId = data.get("employeeId") as string
+  const name = (data.get("name") as string).trim()
+  const email = (data.get("email") as string).trim().toLowerCase()
+  const employeeId = (data.get("employeeId") as string).trim()
   const password = data.get("password") as string
   const role = data.get("role") as string || "EMPLOYEE"
 
@@ -69,9 +69,9 @@ export async function updateEmployee(id: string, data: FormData) {
   const session = await auth()
   if (session?.user?.role !== "ADMIN") return { error: "Unauthorized" }
 
-  const name = data.get("name") as string
-  const email = data.get("email") as string
-  const employeeId = data.get("employeeId") as string
+  const name = (data.get("name") as string).trim()
+  const email = (data.get("email") as string).trim().toLowerCase()
+  const employeeId = (data.get("employeeId") as string).trim()
   const role = data.get("role") as string || "EMPLOYEE"
   const isActive = data.get("isActive") === "on"
 

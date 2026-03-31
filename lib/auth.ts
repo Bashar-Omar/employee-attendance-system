@@ -44,9 +44,10 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
         }
 
         const { email, password } = parsedCredentials.data
-        console.log(`📧 AUTH: Attempting login for: ${email}`)
+        const normalizedEmail = email.trim().toLowerCase()
+        console.log(`📧 AUTH: Attempting login for: ${normalizedEmail}`)
 
-        const user = await getUser(email)
+        const user = await getUser(normalizedEmail)
         if (!user) {
           console.log(`❌ AUTH: Login FAILED — user not found: ${email}`)
           return null
