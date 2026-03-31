@@ -13,7 +13,7 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
             department: true,
             shift: true,
             monthlySummaries: {
-                orderBy: { year: 'desc', month: 'desc' }
+                orderBy: [{ year: 'desc' }, { month: 'desc' }]
             },
             attendances: {
                 orderBy: { date: 'desc' },

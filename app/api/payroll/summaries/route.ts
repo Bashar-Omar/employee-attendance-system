@@ -13,7 +13,11 @@ export async function GET(req: Request) {
   const year = parseInt(searchParams.get('year') ?? String(new Date().getFullYear()), 10);
 
   const summaries = await prisma.monthlySummary.findMany({
-    where: { month, year },
+    where: { 
+      month, 
+      year, 
+      user: { role: 'EMPLOYEE' } 
+    },
     include: {
       user: {
         select: {

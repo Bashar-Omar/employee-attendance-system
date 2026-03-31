@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
   // Calculate for ALL active employees
   const employees = await prisma.user.findMany({
-    where: { isActive: true },
+    where: { isActive: true, role: 'EMPLOYEE' },
     select: { id: true },
   });
 
