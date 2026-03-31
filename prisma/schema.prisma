@@ -8,36 +8,123 @@ generator client {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  employeeId    String   @unique 
-  email         String   @unique
-  password      String   
-  name          String   @default("User")
-  role          String   @default("EMPLOYEE") 
-  isActive      Boolean  @default(true)
-  spreadsheetId String?  
-  attendances   Attendance[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now()) @updatedAt
+  id             String     @id @default(cuid())
+  employeeId     String     @unique
+  email          String     @unique
+  password       String
+  name           String     @default("User")
+  role           String     @default("EMPLOYEE")
+  isActive       Boolean    @default(true)
+  spreadsheetId  String?
+
+  salary         Float?
+  jobTitle       String?
+  phone          String?
+  hireDate       DateTime?
+
+  shiftId        String?
+  shift          Shift?     @relation(fields: [shiftId], references: [id])
+  departmentId   String?
+  department     Department? @relation(fields: [departmentId], references: [id])
+
+  attendances      Attendance[]
+  monthlySummaries MonthlySummary[]
+
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @default(now()) @updatedAt
 }
 
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  users       User[]
+  createdAt   DateTime @default(now())
+}
 
+model Shift {
+  id                String          @id @default(cuid())
+  name              String          @unique
+  startTime         String          // "09:00" HH:mm Egypt local time
+  endTime           String          // "17:00" HH:mm Egypt local time
+  gracePeriodMins   Int             @default(15)
+  overtimeAfterMins Int             @default(0)
+  workDays          String          @default("0,1,2,3,4") // 0=Sun,1=Mon,...,6=Sat
+  deductionRules    DeductionRule[]
+  users             User[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @default(now()) @updatedAt
+}
+
+// Fully admin-configurable deduction rules.
+// Each rule belongs to a shift and defines what to deduct under a given condition.
+// Admins manage these entirely through the UI — no code changes needed to update rules.
+model DeductionRule {
+  id                String   @id @default(cuid())
+  shiftId           String
+  shift             Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  // LATE | ABSENT | EARLY_LEAVE
+  type              String   @default("LATE")
+
+  // For LATE rules: range of late minutes that triggers this rule
+  // lateMinutesTo = null means "no upper limit"
+  lateMinutesFrom   Int      @default(0)
+  lateMinutesTo     Int?
+
+  // PERCENTAGE | FIXED_AMOUNT — admin chooses
+  deductionType     String   @default("PERCENTAGE")
+  deductionValue    Float    // if PERCENTAGE: 0-100, if FIXED_AMOUNT: EGP value
+
+  label             String?  // optional human-readable label e.g. "Minor late (1-30 min)"
+  createdAt         DateTime @default(now())
+}
 
 model Attendance {
-  id           String   @id @default(cuid())
-  userId       String
-  date         DateTime
-  status       String   @default("PRESENT")
-  checkIn      DateTime
-  checkOut     DateTime?
-  inLatitude   Float?
-  inLongitude  Float?
-  inStatus     String?
-  inDistance    Float?
-  outLatitude  Float?
-  outLongitude Float?
-  outStatus    String?
-  outDistance   Float?
-  totalHours   Float?
-  user         User     @relation(fields: [userId], references: [id])
+  id               String    @id @default(cuid())
+  userId           String
+  date             DateTime
+  status           String    @default("PRESENT") // PRESENT | ABSENT | LATE | HOLIDAY | LEAVE
+  checkIn          DateTime?
+  checkOut         DateTime?
+  inLatitude       Float?
+  inLongitude      Float?
+  inStatus         String?
+  inDistance       Float?
+  outLatitude      Float?
+  outLongitude     Float?
+  outStatus        String?
+  outDistance      Float?
+  totalHours       Float?
+  lateMinutes      Int?
+  overtimeMinutes  Int?
+  deductionRuleId  String?   // which rule was matched (for audit trail)
+  deductionValue   Float?    // actual EGP amount deducted that day (stored for audit)
+  notes            String?
+  user             User      @relation(fields: [userId], references: [id])
+}
+
+model MonthlySummary {
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id])
+  month               Int
+  year                Int
+  workingDays         Int       @default(0)
+  presentDays         Int       @default(0)
+  absentDays          Int       @default(0)
+  lateDays            Int       @default(0)
+  totalLateMinutes    Int       @default(0)
+  totalOvertimeHours  Float     @default(0)
+  baseSalary          Float     @default(0)
+  totalDeductions     Float     @default(0)
+  overtimePay         Float     @default(0)
+  finalSalary         Float     @default(0)
+  notes               String?
+  isFinalized         Boolean   @default(false)
+  finalizedAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @default(now()) @updatedAt
+
+  @@unique([userId, month, year])
 }

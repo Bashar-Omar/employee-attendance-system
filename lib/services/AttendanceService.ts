@@ -56,13 +56,13 @@ export class AttendanceService {
     // 4. Sync to Google Sheets
     const user = await prisma.user.findUnique({ where: { id: userId } })
     if (user?.spreadsheetId) {
-       await GoogleSheetsService.logAttendance(user.spreadsheetId, [
-          record.date.toISOString().split('T')[0],
-          record.checkIn.toLocaleTimeString(),
-          "", // Check-Out empty
-          locationData.status,
-          "" // Hours empty
-       ])
+      await GoogleSheetsService.logAttendance(user.spreadsheetId, [
+        record.date.toISOString().split('T')[0],
+        record.checkIn?.toLocaleTimeString() || "",
+        "", // Check-Out empty
+        locationData.status,
+        "" // Hours empty
+      ])
     }
 
     return record
@@ -96,7 +96,7 @@ export class AttendanceService {
     }
 
     if (record.checkOut) {
-       throw new Error("Already checked out. Please check in again to start a new session.")
+      throw new Error("Already checked out. Please check in again to start a new session.")
     }
 
     // 2. Calculate Location
@@ -104,7 +104,7 @@ export class AttendanceService {
 
     // 3. Calculate Hours
     const checkOutTime = new Date()
-    const checkInTime = new Date(record.checkIn)
+    const checkInTime = new Date(record.checkIn || Date.now())
     const durationMs = checkOutTime.getTime() - checkInTime.getTime()
     const totalHours = durationMs / (1000 * 60 * 60)
 
@@ -134,13 +134,13 @@ export class AttendanceService {
     // I'll append a line for Check-Out to be safe: [Date, "SAME", Check-Out, Status, TotalHours]
     const user = await prisma.user.findUnique({ where: { id: userId } })
     if (user?.spreadsheetId) {
-        await GoogleSheetsService.logAttendance(user.spreadsheetId, [
-          updated.date.toISOString().split('T')[0],
-          record.checkIn.toLocaleTimeString(), // Repeat Check-In
-          checkOutTime.toLocaleTimeString(),
-          updated.outStatus || "",
-          totalHours.toFixed(2)
-       ])
+      await GoogleSheetsService.logAttendance(user.spreadsheetId, [
+        updated.date.toISOString().split('T')[0],
+        record.checkIn?.toLocaleTimeString() || "", // Repeat Check-In
+        checkOutTime.toLocaleTimeString(),
+        updated.outStatus || "",
+        totalHours.toFixed(2)
+      ])
     }
 
     return updated
@@ -165,7 +165,7 @@ export class AttendanceService {
         checkIn: 'desc'
       }
     })
-    
+
     return record
   }
 }
