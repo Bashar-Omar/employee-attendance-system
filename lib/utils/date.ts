@@ -1,21 +1,21 @@
 export function toEgyptTime(date: Date | string): string {
-  return new Date(date).toLocaleString('en-GB', {
+  return new Date(date).toLocaleString('en-US', {
     timeZone: 'Africa/Cairo',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit',
-    hour12: false,
+    hour12: true,
   });
 }
 
 export function toEgyptTimeOnly(date: Date | string): string {
-  return new Date(date).toLocaleString('en-GB', {
+  return new Date(date).toLocaleString('en-US', {
     timeZone: 'Africa/Cairo',
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit',
-    hour12: false,
+    hour12: true,
   });
 }
 

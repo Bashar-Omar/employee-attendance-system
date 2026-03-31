@@ -1,18 +1,16 @@
 import Prisma from "@/lib/db/prisma"
 import { Users, Clock, LogOut, AlertTriangle, CheckCircle2 } from "lucide-react"
 import { ClickableRow } from "@/components/ui/ClickableRow"
+import { getEgyptDateString, toEgyptDate, toEgyptTimeOnly } from "@/lib/utils/date"
 
 export default async function AdminDashboard() {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const startOfDay = new Date(today)
-    const endOfDay = new Date(today)
-    endOfDay.setHours(23, 59, 59, 999)
+    const egyptDateStr = getEgyptDateString()
+    const startOfDay = new Date(`${egyptDateStr}T00:00:00+02:00`)
+    const endOfDay = new Date(`${egyptDateStr}T23:59:59+02:00`)
 
-    const workStartTime = new Date(today)
-    workStartTime.setHours(11, 0, 0, 0)
+    const workStartTime = new Date(`${egyptDateStr}T11:00:00+02:00`)
 
-    const workEndTime = new Date(today)
+    const workEndTime = new Date(`${egyptDateStr}T20:00:00+02:00`)
     workEndTime.setHours(20, 0, 0, 0)
 
     const [
@@ -75,7 +73,7 @@ export default async function AdminDashboard() {
             <div className="rounded-xl border bg-card shadow-sm">
                 <div className="p-6 border-b flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-foreground">Live Attendance</h3>
-                    <span className="text-xs font-medium px-2 py-1 bg-blue-50 text-blue-700 rounded-full">{today.toLocaleDateString()}</span>
+                    <span className="text-xs font-medium px-2 py-1 bg-blue-50 text-blue-700 rounded-full">{toEgyptDate(new Date())}</span>
                 </div>
 
                 <div className="relative w-full overflow-auto">
@@ -102,9 +100,9 @@ export default async function AdminDashboard() {
                                             <span className="text-xs text-muted-foreground">{record.user.employeeId}</span>
                                         </div>
                                     </td>
-                                    <td className="p-6 align-middle font-medium tabular-nums">{record.checkIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                    <td className="p-6 align-middle font-medium tabular-nums">{toEgyptTimeOnly(record.checkIn)}</td>
                                     <td className="p-6 align-middle font-medium tabular-nums text-muted-foreground">
-                                        {record.checkOut ? record.checkOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : <span className="text-green-600 font-semibold px-2 py-0.5 bg-green-50 rounded-md text-xs">Active</span>}
+                                        {record.checkOut ? toEgyptTimeOnly(record.checkOut) : <span className="text-green-600 font-semibold px-2 py-0.5 bg-green-50 rounded-md text-xs">Active</span>}
                                     </td>
                                     <td className="p-6 align-middle">
                                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${record.inStatus === 'INSIDE' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
