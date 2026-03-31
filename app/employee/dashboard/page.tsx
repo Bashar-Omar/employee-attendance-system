@@ -72,7 +72,7 @@ export default async function DashboardPage() {
                                             </td>
                                             <td className="p-4 px-6 align-middle">
                                                 <div className="flex flex-col text-xs">
-                                                    <span className="font-medium text-green-700">IN: {toEgyptTimeOnly(record.checkIn)}</span>
+                                                    <span className="font-medium text-green-700">IN: {record.checkIn ? toEgyptTimeOnly(record.checkIn) : '-'}</span>
                                                     {record.checkOut && (
                                                         <span className="text-muted-foreground">OUT: {toEgyptTimeOnly(record.checkOut)}</span>
                                                     )}

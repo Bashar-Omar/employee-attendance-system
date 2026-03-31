@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { User, Activity, FileText, FileSpreadsheet } from "lucide-react";
+import { User, Activity, FileText, RefreshCw } from "lucide-react";
 import { toEgyptDate, toEgyptTimeOnly } from "@/lib/utils/date";
+import Link from "next/link";
 
 export default function EmployeeProfileTabs({ employee }: { employee: any }) {
   const [activeTab, setActiveTab] = useState("basic");
@@ -99,11 +100,11 @@ export default function EmployeeProfileTabs({ employee }: { employee: any }) {
                   <div className="col-span-2 font-medium">{employee.salary ? `${employee.salary.toFixed(2)} EGP` : "—"}</div>
               </div>
               <div className="grid grid-cols-3 gap-2 py-2 border-dashed sm:grid-cols-1 md:grid-cols-3">
-                  <span className="font-medium text-muted-foreground col-span-1">Sheet Link</span>
+                  <span className="font-medium text-muted-foreground col-span-1">Status</span>
                   <div className="col-span-2">
-                    <a href={`https://docs.google.com/spreadsheets/d/${process.env.NEXT_PUBLIC_MAIN_SPREADSHEET_ID}`} target="_blank" className="text-primary hover:underline flex items-center gap-1 text-xs">
-                        <FileSpreadsheet className="h-3 w-3" /> Open
-                    </a>
+                    <span className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${employee.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {employee.isActive ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
               </div>
             </div>
@@ -182,6 +183,7 @@ export default function EmployeeProfileTabs({ employee }: { employee: any }) {
                              <th className="h-10 px-4 font-medium text-muted-foreground text-right">Overtime</th>
                              <th className="h-10 px-4 font-medium text-primary text-right font-bold w-32">Net Salary</th>
                              <th className="h-10 px-4 font-medium text-muted-foreground text-center">Status</th>
+                             <th className="h-10 px-4 font-medium text-muted-foreground">Actions</th>
                          </tr>
                      </thead>
                      <tbody className="divide-y bg-background">
@@ -199,10 +201,28 @@ export default function EmployeeProfileTabs({ employee }: { employee: any }) {
                                          {summary.isFinalized ? 'Finalized' : 'Draft'}
                                      </span>
                                  </td>
+                                 <td className="p-4">
+                                     <div className="flex items-center gap-2">
+                                         <Link
+                                           href={`/admin/payroll/${employee.id}/${summary.year}/${summary.month}`}
+                                           className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium bg-muted hover:bg-muted/80 transition"
+                                         >
+                                           <FileText className="h-3 w-3" /> Payslip
+                                         </Link>
+                                         {!summary.isFinalized && (
+                                           <Link
+                                             href="/admin/payroll"
+                                             className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
+                                           >
+                                             <RefreshCw className="h-3 w-3" /> Recalc
+                                           </Link>
+                                         )}
+                                     </div>
+                                 </td>
                              </tr>
                          ))}
                          {(!employee.monthlySummaries || employee.monthlySummaries.length === 0) && (
-                             <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No monthly summaries generated yet.</td></tr>
+                             <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">No monthly summaries generated yet.</td></tr>
                          )}
                      </tbody>
                  </table>
