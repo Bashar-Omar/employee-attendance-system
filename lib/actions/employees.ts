@@ -16,6 +16,17 @@ export async function createEmployee(data: FormData) {
   const password = data.get("password") as string
   const role = data.get("role") as string || "EMPLOYEE"
 
+  const jobTitle = (data.get("jobTitle") as string) || null
+  const phone = (data.get("phone") as string) || null
+  const shiftId = (data.get("shiftId") as string) || null
+  const departmentId = (data.get("departmentId") as string) || null
+  
+  const salaryStr = data.get("salary") as string
+  const salary = salaryStr ? parseFloat(salaryStr) : null
+
+  const hireDateStr = data.get("hireDate") as string
+  const hireDate = hireDateStr ? new Date(hireDateStr) : null
+
   if (!name || !email || !employeeId || !password) {
       return { error: "Missing fields" }
   }
@@ -37,7 +48,13 @@ export async function createEmployee(data: FormData) {
               employeeId,
               password: hashedPassword,
               role: role,
-              spreadsheetId: sheetName || name // Store sheet name/ID
+              spreadsheetId: sheetName || name, // Store sheet name/ID
+              jobTitle,
+              phone,
+              salary,
+              hireDate,
+              shiftId,
+              departmentId
           }
       })
 
@@ -58,6 +75,17 @@ export async function updateEmployee(id: string, data: FormData) {
   const role = data.get("role") as string || "EMPLOYEE"
   const isActive = data.get("isActive") === "on"
 
+  const jobTitle = (data.get("jobTitle") as string) || null
+  const phone = (data.get("phone") as string) || null
+  const shiftId = (data.get("shiftId") as string) || null
+  const departmentId = (data.get("departmentId") as string) || null
+  
+  const salaryStr = data.get("salary") as string
+  const salary = salaryStr ? parseFloat(salaryStr) : null
+
+  const hireDateStr = data.get("hireDate") as string
+  const hireDate = hireDateStr ? new Date(hireDateStr) : null
+
   try {
       await prisma.user.update({
           where: { id },
@@ -66,7 +94,13 @@ export async function updateEmployee(id: string, data: FormData) {
               email,
               employeeId,
               role: role,
-              isActive
+              isActive,
+              jobTitle,
+              phone,
+              salary,
+              hireDate,
+              shiftId,
+              departmentId
           }
       })
       revalidatePath("/admin/employees")

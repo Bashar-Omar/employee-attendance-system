@@ -3,7 +3,12 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 
-export default function NewEmployeePage() {
+import prisma from "@/lib/db/prisma"
+
+export default async function NewEmployeePage() {
+  const shifts = await prisma.shift.findMany({ orderBy: { name: 'asc' } })
+  const departments = await prisma.department.findMany({ orderBy: { name: 'asc' } })
+
   return (
     <div className="space-y-6">
         <div className="flex items-center gap-4">
@@ -15,7 +20,7 @@ export default function NewEmployeePage() {
             <h1 className="text-2xl font-bold tracking-tight">Add New Employee</h1>
         </div>
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
-            <CreateEmployeeForm />
+            <CreateEmployeeForm shifts={shifts} departments={departments} />
         </div>
     </div>
   )

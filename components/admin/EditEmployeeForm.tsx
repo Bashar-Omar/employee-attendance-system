@@ -7,7 +7,15 @@ import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
 import { Loader2, Trash2, Save, User, Mail, Hash } from "lucide-react"
 
-export default function EditEmployeeForm({ employee }: { employee: any }) {
+export default function EditEmployeeForm({
+  employee,
+  shifts,
+  departments
+}: {
+  employee: any;
+  shifts: any[];
+  departments: any[];
+}) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -63,6 +71,55 @@ export default function EditEmployeeForm({ employee }: { employee: any }) {
                         <Mail className="h-4 w-4" /> Email Address
                     </label>
                     <Input id="email" name="email" type="email" required defaultValue={employee.email} className="bg-muted/30" />
+                </div>
+
+                <div className="space-y-2">
+                    <label htmlFor="jobTitle" className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                        Job Title
+                    </label>
+                    <Input id="jobTitle" name="jobTitle" defaultValue={employee.jobTitle || ""} className="bg-muted/30" />
+                </div>
+                <div className="space-y-2">
+                    <label htmlFor="phone" className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                        Phone Number
+                    </label>
+                    <Input id="phone" name="phone" defaultValue={employee.phone || ""} className="bg-muted/30" />
+                </div>
+                
+                <div className="space-y-2">
+                    <label htmlFor="salary" className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                        Monthly Salary (EGP)
+                    </label>
+                    <Input id="salary" name="salary" type="number" step="0.01" defaultValue={employee.salary || ""} className="bg-muted/30" />
+                </div>
+                <div className="space-y-2">
+                    <label htmlFor="hireDate" className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                        Hire Date
+                    </label>
+                    <Input id="hireDate" name="hireDate" type="date" defaultValue={employee.hireDate ? new Date(employee.hireDate).toISOString().split('T')[0] : ""} className="bg-muted/30" />
+                </div>
+
+                <div className="space-y-2">
+                    <label htmlFor="departmentId" className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                        Department
+                    </label>
+                    <select name="departmentId" id="departmentId" defaultValue={employee.departmentId || ""} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <option value="">None (General)</option>
+                        {departments.map((dept) => (
+                            <option key={dept.id} value={dept.id}>{dept.name}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="space-y-2">
+                    <label htmlFor="shiftId" className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                        Shift
+                    </label>
+                    <select name="shiftId" id="shiftId" defaultValue={employee.shiftId || ""} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <option value="">Default Shift</option>
+                        {shifts.map((shift) => (
+                            <option key={shift.id} value={shift.id}>{shift.name} ({shift.startTime} - {shift.endTime})</option>
+                        ))}
+                    </select>
                 </div>
                 <div className="space-y-2 md:col-span-2">
                     <label htmlFor="role" className="text-sm font-medium flex items-center gap-2 text-muted-foreground">

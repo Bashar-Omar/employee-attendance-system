@@ -15,6 +15,9 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
       return <div>Employee not found</div>
   }
 
+  const shifts = await prisma.shift.findMany({ orderBy: { name: 'asc' } })
+  const departments = await prisma.department.findMany({ orderBy: { name: 'asc' } })
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
@@ -30,7 +33,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
         </div>
         
         <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-8 bg-white">
-            <EditEmployeeForm employee={employee} />
+            <EditEmployeeForm employee={employee} shifts={shifts} departments={departments} />
         </div>
     </div>
   )
