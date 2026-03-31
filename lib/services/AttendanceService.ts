@@ -2,6 +2,9 @@ import prisma from "@/lib/db/prisma"
 import { getLocationStatus } from "./LocationService"
 import { GoogleSheetsService } from "./GoogleSheetsService"
 import { getEgyptDateString } from "@/lib/utils/date"
+import { calculateLateMinutes, calculateOvertimeMinutes } from "@/lib/payroll/calculateLate"
+import { findApplicableRule, calculateDailyDeductionAmount } from "@/lib/payroll/calculateDeduction"
+import { countWorkingDays } from "@/lib/payroll/calculateMonthlySummary"
 
 
 export class AttendanceService {
@@ -37,15 +40,49 @@ export class AttendanceService {
 
     // Otherwise (No record OR Last record has checkOut), create NEW record.
 
-    // 2. Calculate Location
+    // 2. Fetch User & Shift
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { shift: true }
+    })
+    
+    if (!user) throw new Error("User not found")
+
+    // 3. Calculate Location
     const locationData = getLocationStatus(latitude, longitude)
 
-    // 3. Create Record
+    // 4. Calculate Lateness and Deductions
+    const checkInTime = new Date()
+    const shift = user.shift
+    
+    const lateMinutes = shift 
+      ? calculateLateMinutes(checkInTime, shift.startTime, shift.gracePeriodMins) 
+      : 0
+    
+    let deductionRuleId: string | null = null;
+    let deductionValue: number | null = null;
+
+    if (shift && lateMinutes > 0 && user.salary) {
+      const rules = await prisma.deductionRule.findMany({ where: { shiftId: shift.id } });
+      const now = new Date();
+      const workingDays = countWorkingDays(now.getFullYear(), now.getMonth() + 1, shift.workDays);
+      const matchedRule = findApplicableRule(lateMinutes, false, rules);
+      if (matchedRule) {
+        deductionRuleId = matchedRule.id;
+        deductionValue = calculateDailyDeductionAmount(matchedRule, user.salary, workingDays);
+      }
+    }
+
+    // 5. Create Record
     const record = await prisma.attendance.create({
       data: {
         userId,
         date: startOfDay, // Normalize date part
-        checkIn: new Date(),
+        checkIn: checkInTime,
+        status: lateMinutes > 0 ? 'LATE' : 'PRESENT',
+        lateMinutes,
+        deductionRuleId,
+        deductionValue,
         inLatitude: latitude,
         inLongitude: longitude,
         inStatus: locationData.status,
@@ -53,9 +90,8 @@ export class AttendanceService {
       },
     })
 
-    // 4. Sync to Google Sheets
-    const user = await prisma.user.findUnique({ where: { id: userId } })
-    if (user?.spreadsheetId) {
+    // 6. Sync to Google Sheets
+    if (user.spreadsheetId) {
       await GoogleSheetsService.logAttendance(user.spreadsheetId, [
         record.date.toISOString().split('T')[0],
         record.checkIn?.toLocaleTimeString() || "",
@@ -102,11 +138,17 @@ export class AttendanceService {
     // 2. Calculate Location
     const locationData = getLocationStatus(latitude, longitude)
 
-    // 3. Calculate Hours
+    // 3. Calculate Hours and Overtime
     const checkOutTime = new Date()
     const checkInTime = new Date(record.checkIn || Date.now())
     const durationMs = checkOutTime.getTime() - checkInTime.getTime()
     const totalHours = durationMs / (1000 * 60 * 60)
+    
+    const user = await prisma.user.findUnique({ where: { id: userId }, include: { shift: true } })
+    let overtimeMinutes = 0
+    if (user?.shift) {
+       overtimeMinutes = calculateOvertimeMinutes(checkOutTime, user.shift.endTime, user.shift.overtimeAfterMins)
+    }
 
     // 4. Update Record
     const updated = await prisma.attendance.update({
@@ -118,21 +160,11 @@ export class AttendanceService {
         outStatus: locationData.status,
         outDistance: locationData.distance,
         totalHours: parseFloat(totalHours.toFixed(2)),
+        overtimeMinutes
       },
     })
 
     // 5. Sync to Sheets
-    // For Check-Out, we ideally update the existing row. 
-    // Implementing a simple append for now to ensure data is captured, 
-    // as finding the exact row requiring update is complex without row ID storage.
-    // Alternative: We append a new row with just Check-Out info, or try to update.
-    // Given functionality mandates "Google Sheets Integration", I will append a "Check-Out" specific log 
-    // OR try to implement an 'Update' in the service if requested.
-    // For simplicity and robustness (avoiding overwrite of wrong rows), I will append the completed record as a new confirmation line 
-    // or (Better) re-write the last row if possible. 
-    // Let's rely on the service to handle "logAttendance".
-    // I'll append a line for Check-Out to be safe: [Date, "SAME", Check-Out, Status, TotalHours]
-    const user = await prisma.user.findUnique({ where: { id: userId } })
     if (user?.spreadsheetId) {
       await GoogleSheetsService.logAttendance(user.spreadsheetId, [
         updated.date.toISOString().split('T')[0],
