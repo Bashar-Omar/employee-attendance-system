@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth"
 import Link from "next/link"
-import { Building2, LayoutDashboard, Users, Settings, LogOut, FileSpreadsheet } from "lucide-react"
+import { Building2, LayoutDashboard, Users, LogOut, FileSpreadsheet, Clock, Layers, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default async function AdminLayout({
@@ -28,6 +28,18 @@ export default async function AdminLayout({
              <Link href="/admin/employees" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted text-muted-foreground hover:text-foreground">
                 <Users className="h-4 w-4" />
                 Employees
+             </Link>
+             <Link href="/admin/shifts" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted text-muted-foreground hover:text-foreground">
+                <Clock className="h-4 w-4" />
+                Shifts
+             </Link>
+             <Link href="/admin/departments" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted text-muted-foreground hover:text-foreground">
+                <Layers className="h-4 w-4" />
+                Departments
+             </Link>
+             <Link href="/admin/payroll" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted text-muted-foreground hover:text-foreground">
+                <DollarSign className="h-4 w-4" />
+                Payroll
              </Link>
               <div className="pt-4 mt-4 border-t px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">System</div>
               <a href={`https://docs.google.com/spreadsheets/d/${process.env.MAIN_SPREADSHEET_ID}`} target="_blank" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted text-muted-foreground hover:text-foreground">
