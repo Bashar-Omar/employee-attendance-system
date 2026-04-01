@@ -8,7 +8,51 @@ type User = {
   id: string;
   name: string;
   employeeId: string;
+  shift?: {
+    startTime: string;
+    endTime: string;
+    gracePeriodMins: number;
+    overtimeAfterMins: number;
+  };
 };
+
+function calculateLateMinutesClient(
+  checkInTime: string,
+  shiftStart: string,
+  gracePeriodMins: number
+): number {
+  const [inH, inM] = checkInTime.split(':').map(Number);
+  const [shH, shM] = shiftStart.split(':').map(Number);
+  const diff = (inH * 60 + inM) - (shH * 60 + shM);
+  return diff <= gracePeriodMins ? 0 : diff;
+}
+
+function calculateOvertimeMinutesClient(
+  checkOutTime: string,
+  shiftEnd: string,
+  overtimeAfterMins: number
+): number {
+  const [outH, outM] = checkOutTime.split(':').map(Number);
+  const [shH, shM] = shiftEnd.split(':').map(Number);
+  const diff = (outH * 60 + outM) - (shH * 60 + shM);
+  return diff <= overtimeAfterMins ? 0 : diff;
+}
+
+function generateLocationData(status: 'INSIDE' | 'OUTSIDE') {
+  if (status === 'INSIDE') {
+    return {
+      latitude: 30.0444 + (Math.random() - 0.5) * 0.001,
+      longitude: 31.2357 + (Math.random() - 0.5) * 0.001,
+      distance: Math.random() * 50, // 0-50 meters
+    };
+  } else {
+    return {
+      latitude: 30.0444 + (Math.random() - 0.5) * 0.01,
+      longitude: 31.2357 + (Math.random() - 0.5) * 0.01,
+      distance: 200 + Math.random() * 800, // 200-1000 meters
+    };
+  }
+}
 
 export default function AttendanceEditor() {
   const [users, setUsers] = useState<User[]>([]);
@@ -23,29 +67,49 @@ export default function AttendanceEditor() {
   const [checkInTime, setCheckInTime] = useState('');
   const [checkOutTime, setCheckOutTime] = useState('');
   
-  const [inLatitude, setInLatitude] = useState('');
-  const [inLongitude, setInLongitude] = useState('');
-  const [inStatus, setInStatus] = useState('');
-  const [inDistance, setInDistance] = useState('');
-
-  const [outLatitude, setOutLatitude] = useState('');
-  const [outLongitude, setOutLongitude] = useState('');
-  const [outStatus, setOutStatus] = useState('');
-  const [outDistance, setOutDistance] = useState('');
+  const [inStatus, setInStatus] = useState<'INSIDE' | 'OUTSIDE'>('INSIDE');
+  const [outStatus, setOutStatus] = useState<'INSIDE' | 'OUTSIDE' | ''>('');
 
   const [lateMinutes, setLateMinutes] = useState('');
   const [overtimeMinutes, setOvertimeMinutes] = useState('');
   const [notes, setNotes] = useState('');
+  
+  const [autoCalculate, setAutoCalculate] = useState(true);
 
   // Fetch users on mount
   useEffect(() => {
-    fetch('/api/console/ops/users')
+    fetch('/api/console/ops/employees')
       .then(res => res.json())
       .then(data => {
         if(Array.isArray(data)) setUsers(data);
       })
-      .catch(err => console.error("Failed to fetch users", err));
+      .catch(err => console.error("Failed to fetch employees", err));
   }, []);
+
+  const selectedEmployee = users.find(u => u.id === selectedUserId);
+
+  useEffect(() => {
+    if (!autoCalculate || !selectedEmployee?.shift || !checkInTime) return;
+
+    if (autoCalculate) {
+      const lateMin = calculateLateMinutesClient(
+        checkInTime,
+        selectedEmployee.shift.startTime,
+        selectedEmployee.shift.gracePeriodMins
+      );
+
+      const overtimeMin = checkOutTime
+        ? calculateOvertimeMinutesClient(
+            checkOutTime,
+            selectedEmployee.shift.endTime,
+            selectedEmployee.shift.overtimeAfterMins
+          )
+        : 0;
+
+      setLateMinutes(lateMin.toString());
+      setOvertimeMinutes(overtimeMin.toString());
+    }
+  }, [checkInTime, checkOutTime, autoCalculate, selectedEmployee]);
 
   // Fetch record when userId or date changes
   useEffect(() => {
@@ -67,12 +131,8 @@ export default function AttendanceEditor() {
           setRecordId(data.id);
           setStatus(data.status || 'PRESENT');
           
-          // Helper to extract HH:mm from ISO
           const extTime = (iso: string | null) => {
              if (!iso) return '';
-             // Assumes UTC is closely aligned or format is simple enough; better: convert to locale properly if needed, 
-             // but we'll extract directly. Based on previous spec: "Egypt local time strings ("09:15") to UTC Date objects"
-             // in storing. Here we format it back. The date object is returned in UTC representing Egypt time.
              const d = new Date(iso);
              return d.toLocaleTimeString('en-GB', { timeZone: 'Africa/Cairo', hour: '2-digit', minute: '2-digit' });
           };
@@ -80,25 +140,18 @@ export default function AttendanceEditor() {
           setCheckInTime(extTime(data.checkIn));
           setCheckOutTime(extTime(data.checkOut));
           
-          setInLatitude(data.inLatitude?.toString() ?? '');
-          setInLongitude(data.inLongitude?.toString() ?? '');
-          setInStatus(data.inStatus ?? '');
-          setInDistance(data.inDistance?.toString() ?? '');
-
-          setOutLatitude(data.outLatitude?.toString() ?? '');
-          setOutLongitude(data.outLongitude?.toString() ?? '');
-          setOutStatus(data.outStatus ?? '');
-          setOutDistance(data.outDistance?.toString() ?? '');
+          setInStatus((data.inStatus as any) || 'INSIDE');
+          setOutStatus((data.outStatus as any) || '');
 
           setLateMinutes(data.lateMinutes?.toString() ?? '');
           setOvertimeMinutes(data.overtimeMinutes?.toString() ?? '');
           setNotes(data.notes ?? '');
           
-          setMessage({ type: 'success', text: 'Loaded existing record.' });
+          setMessage({ type: 'success', text: `Loaded existing record — ${date}` });
         } else {
           // Insert mode
           resetForm();
-          setMessage({ type: 'success', text: 'Ready for new record.' });
+          setMessage({ type: 'success', text: 'No record found — creating new' });
         }
       } catch(err) {
         console.error(err);
@@ -117,14 +170,8 @@ export default function AttendanceEditor() {
     setStatus('PRESENT');
     setCheckInTime('');
     setCheckOutTime('');
-    setInLatitude('');
-    setInLongitude('');
-    setInStatus('');
-    setInDistance('');
-    setOutLatitude('');
-    setOutLongitude('');
+    setInStatus('INSIDE');
     setOutStatus('');
-    setOutDistance('');
     setLateMinutes('');
     setOvertimeMinutes('');
     setNotes('');
@@ -136,6 +183,9 @@ export default function AttendanceEditor() {
 
     setLoading(true);
     setMessage(null);
+    
+    const inLoc = generateLocationData(inStatus);
+    const outLoc = outStatus ? generateLocationData(outStatus as 'INSIDE' | 'OUTSIDE') : null;
 
     const payload = {
       userId: selectedUserId,
@@ -143,17 +193,18 @@ export default function AttendanceEditor() {
       checkInTime,
       checkOutTime,
       status,
-      inLatitude,
-      inLongitude,
+      inLatitude: inLoc.latitude,
+      inLongitude: inLoc.longitude,
       inStatus,
-      inDistance,
-      outLatitude,
-      outLongitude,
-      outStatus,
-      outDistance,
+      inDistance: inLoc.distance,
+      outLatitude: outLoc?.latitude,
+      outLongitude: outLoc?.longitude,
+      outStatus: outStatus || null,
+      outDistance: outLoc?.distance,
       lateMinutes,
       overtimeMinutes,
       notes,
+      autoCalculate
     };
 
     try {
@@ -232,7 +283,7 @@ export default function AttendanceEditor() {
 
           {/* Messages */}
           {message && (
-             <div className={`p-3 rounded text-sm font-medium ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+             <div className={`p-3 rounded-md text-sm font-medium ${message.type === 'success' ? (message.text.includes('No record') ? 'bg-gray-100 text-gray-800' : 'bg-green-100 text-green-800') : 'bg-red-100 text-red-800'}`}>
                 {message.text}
              </div>
           )}
@@ -241,7 +292,7 @@ export default function AttendanceEditor() {
             {/* Times & Status */}
             <div className="space-y-4">
                <div className="flex flex-col space-y-2">
-                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Status</label>
+                 <label className="text-sm font-medium leading-none">Status</label>
                  <select 
                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                    value={status} 
@@ -257,52 +308,71 @@ export default function AttendanceEditor() {
                
                <div className="grid grid-cols-2 gap-4">
                  <div>
-                   <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Check-in Time (HH:mm)</label>
+                   <label className="text-sm font-medium leading-none">Check-in Time (HH:mm)</label>
                    <Input type="time" value={checkInTime} onChange={e => setCheckInTime(e.target.value)} className="mt-1" />
                  </div>
-                 <div>
-                   <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Check-out Time (HH:mm)</label>
-                   <Input type="time" value={checkOutTime} onChange={e => setCheckOutTime(e.target.value)} className="mt-1" />
+                 <div className="flex flex-col space-y-2">
+                   <label className="text-sm mt-3 font-medium leading-none">In Status</label>
+                   <select 
+                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                     value={inStatus} 
+                     onChange={e => setInStatus(e.target.value as any)}
+                   >
+                     <option value="INSIDE">INSIDE</option>
+                     <option value="OUTSIDE">OUTSIDE</option>
+                   </select>
                  </div>
                </div>
 
                <div className="grid grid-cols-2 gap-4">
                  <div>
-                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Late Minutes</label>
-                    <Input type="number" min="0" value={lateMinutes} onChange={e => setLateMinutes(e.target.value)} placeholder="Auto-calculate if empty" className="mt-1" />
+                   <label className="text-sm font-medium leading-none">Check-out Time (HH:mm)</label>
+                   <Input type="time" value={checkOutTime} onChange={e => setCheckOutTime(e.target.value)} className="mt-1" />
+                 </div>
+                 <div className="flex flex-col space-y-2">
+                   <label className="text-sm mt-3 font-medium leading-none">Out Status</label>
+                   <select 
+                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                     value={outStatus} 
+                     onChange={e => setOutStatus(e.target.value as any)}
+                   >
+                     <option value="">(None)</option>
+                     <option value="INSIDE">INSIDE</option>
+                     <option value="OUTSIDE">OUTSIDE</option>
+                   </select>
+                 </div>
+               </div>
+
+               <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center space-x-2">
+                     <input type="checkbox" id="autoCalculate" checked={autoCalculate} onChange={e => setAutoCalculate(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+                     <label htmlFor="autoCalculate" className="text-sm font-medium">Auto-calculate late & overtime from shift</label>
+                  </div>
+                  {autoCalculate && checkInTime && (
+                     <p className="text-sm text-muted-foreground font-mono">
+                       Late: {lateMinutes || 0} minutes | Overtime: {overtimeMinutes || 0} minutes
+                     </p>
+                  )}
+               </div>
+
+               <div className="grid grid-cols-2 gap-4">
+                 <div>
+                    <label className="text-sm font-medium leading-none">Late Minutes</label>
+                    <Input type="number" min="0" value={lateMinutes} onChange={e => setLateMinutes(e.target.value)} placeholder="0" className="mt-1" disabled={autoCalculate} />
                  </div>
                  <div>
-                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Overtime Minutes</label>
-                    <Input type="number" min="0" value={overtimeMinutes} onChange={e => setOvertimeMinutes(e.target.value)} placeholder="Auto-calculate if empty" className="mt-1" />
+                    <label className="text-sm font-medium leading-none">Overtime Minutes</label>
+                    <Input type="number" min="0" value={overtimeMinutes} onChange={e => setOvertimeMinutes(e.target.value)} placeholder="0" className="mt-1" disabled={autoCalculate} />
                  </div>
                </div>
                
                <div>
-                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Notes</label>
+                 <label className="text-sm font-medium leading-none">Notes</label>
                  <textarea 
                    value={notes} 
                    onChange={e => setNotes(e.target.value)} 
                    className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 mt-1" 
                  />
-               </div>
-            </div>
-
-            {/* GPS & Status */}
-            <div className="space-y-4 bg-gray-50 p-4 rounded-lg border">
-               <h3 className="font-semibold text-sm mb-2">Check-in Details</h3>
-               <div className="grid grid-cols-2 gap-2">
-                 <div><label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">In Latitude</label><Input type="number" step="any" value={inLatitude} onChange={e => setInLatitude(e.target.value)} /></div>
-                 <div><label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">In Longitude</label><Input type="number" step="any" value={inLongitude} onChange={e => setInLongitude(e.target.value)} /></div>
-                 <div><label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">In Status</label><Input value={inStatus} onChange={e => setInStatus(e.target.value)} placeholder="INSIDE" /></div>
-                 <div><label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">In Distance (m)</label><Input type="number" value={inDistance} onChange={e => setInDistance(e.target.value)} /></div>
-               </div>
-               
-               <h3 className="font-semibold text-sm mt-4 mb-2 pt-4 border-t border-gray-200">Check-out Details</h3>
-               <div className="grid grid-cols-2 gap-2">
-                 <div><label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Out Latitude</label><Input type="number" step="any" value={outLatitude} onChange={e => setOutLatitude(e.target.value)} /></div>
-                 <div><label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Out Longitude</label><Input type="number" step="any" value={outLongitude} onChange={e => setOutLongitude(e.target.value)} /></div>
-                 <div><label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Out Status</label><Input value={outStatus} onChange={e => setOutStatus(e.target.value)} placeholder="INSIDE" /></div>
-                 <div><label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Out Distance (m)</label><Input type="number" value={outDistance} onChange={e => setOutDistance(e.target.value)} /></div>
                </div>
             </div>
           </div>

@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import PrintButton from './PrintButton';
+import { toEgyptTimeOnly } from '@/lib/utils/date';
 
 const MONTH_NAMES = [
   '', 'January', 'February', 'March', 'April', 'May', 'June',
@@ -23,17 +24,29 @@ export default async function PayslipPage({
   const year = parseInt(yearStr, 10);
   const month = parseInt(monthStr, 10);
 
-  const summary = await prisma.monthlySummary.findUnique({
-    where: { userId_month_year: { userId, month, year } },
-    include: {
-      user: {
-        include: {
-          department: true,
-          shift: true,
+  const [summary, attendances] = await Promise.all([
+    prisma.monthlySummary.findUnique({
+      where: { userId_month_year: { userId, month, year } },
+      include: {
+        user: {
+          include: {
+            department: true,
+            shift: true,
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.attendance.findMany({
+      where: {
+        userId,
+        date: {
+          gte: new Date(year, month - 1, 1),
+          lte: new Date(year, month, 0, 23, 59, 59),
+        },
+      },
+      orderBy: { date: 'asc' },
+    }),
+  ]);
 
   if (!summary) {
     return (
@@ -55,11 +68,53 @@ export default async function PayslipPage({
   }
 
   const { user } = summary;
+  const workDays = user.shift?.workDays?.split(',').map(Number) ?? [0, 1, 2, 3, 4];
+
+  // Build daily attendance array
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const dailyRecords = [];
+  let totalHoursSum = 0;
+  let totalLateMins = 0;
+  let totalOvertimeMins = 0;
+  let totalDeductionVal = 0;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const currentDate = new Date(year, month - 1, d);
+    const dayOfWeek = currentDate.getDay(); // 0 is Sunday
+    
+    // Find if there is an attendance record for this exact day by comparing local YYYY-MM-DD
+    const dateStr = currentDate.toLocaleDateString('en-CA');
+    const record = attendances.find(a => new Date(a.date).toLocaleDateString('en-CA') === dateStr);
+
+    const isWorkDay = workDays.includes(dayOfWeek);
+    let status = record?.status || (isWorkDay ? 'ABSENT' : 'OFF');
+
+    if (record) {
+      status = record.status;
+      totalHoursSum += (record.totalHours || 0);
+      totalLateMins += (record.lateMinutes || 0);
+      totalOvertimeMins += (record.overtimeMinutes || 0);
+      totalDeductionVal += (record.deductionValue || 0);
+    }
+
+    dailyRecords.push({
+      dateObj: currentDate,
+      dayNumber: d,
+      dayName: currentDate.toLocaleDateString('en-US', { weekday: 'short' }),
+      isWorkDay,
+      record: record || null,
+      status
+    });
+  }
 
   return (
     <>
       {/* Print button — hidden when printing */}
       <div className="no-print mb-6 flex items-center gap-3">
+        <Link
+           href={`/admin/payroll/${userId}/${year}/${month}`}
+           className="hidden"
+        ></Link>
         <Link
           href="/admin/payroll"
           className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted transition"
@@ -70,7 +125,7 @@ export default async function PayslipPage({
       </div>
 
       {/* ── Payslip Document ── */}
-      <div className="payslip mx-auto max-w-2xl rounded-2xl border bg-white p-10 shadow-lg print:shadow-none print:border-none print:p-8">
+      <div className="payslip mx-auto max-w-4xl rounded-2xl border bg-white p-10 shadow-lg print:shadow-none print:border-none print:p-8">
         {/* Company Header */}
         <div className="flex items-start justify-between border-b pb-6 mb-6">
           <div>
@@ -110,7 +165,7 @@ export default async function PayslipPage({
           <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
             Attendance Summary
           </h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
             {[
               { label: 'Working Days', value: summary.workingDays, color: 'gray' },
               { label: 'Present Days', value: summary.presentDays, color: 'green' },
@@ -128,7 +183,7 @@ export default async function PayslipPage({
         </section>
 
         {/* Salary Breakdown */}
-        <section className="mb-6">
+        <section className="mb-6 page-break-avoid">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
             Salary Breakdown
           </h2>
@@ -152,9 +207,99 @@ export default async function PayslipPage({
           </div>
         </section>
 
+        {/* Daily Attendance Detail */}
+        <section className="mb-6 mt-8">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
+            Daily Attendance Detail
+          </h2>
+          <div className="rounded-xl border overflow-hidden">
+            <table className="w-full text-sm text-left align-middle tabular-nums">
+              <thead className="bg-gray-50 text-gray-500 text-xs uppercase border-b">
+                <tr>
+                  <th className="py-2 px-3 font-semibold">Date</th>
+                  <th className="py-2 px-3 font-semibold">Check-in</th>
+                  <th className="py-2 px-3 font-semibold">Check-out</th>
+                  <th className="py-2 px-3 font-semibold text-center">Total Hours</th>
+                  <th className="py-2 px-3 font-semibold text-center">Late (min)</th>
+                  <th className="py-2 px-3 font-semibold text-right">Deduction Applied</th>
+                  <th className="py-2 px-3 font-semibold text-center">Overtime (min)</th>
+                  <th className="py-2 px-3 font-semibold text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y bg-white text-gray-700">
+                {dailyRecords.map((d, i) => {
+                  const r = d.record;
+                  let bgClass = '';
+                  let highlightClass = '';
+
+                  if (d.status === 'ABSENT') {
+                    bgClass = 'bg-red-50/50';
+                    highlightClass = 'border-l-4 border-l-red-500';
+                  } else if (d.status === 'LATE') {
+                    bgClass = 'bg-amber-50/50';
+                    highlightClass = 'border-l-4 border-l-amber-400';
+                  } else if (d.status === 'OFF') {
+                    bgClass = 'bg-gray-50/50 text-gray-400';
+                  } else {
+                    highlightClass = 'border-l-4 border-l-transparent';
+                  }
+
+                  return (
+                    <tr key={i} className={`${bgClass}`}>
+                      <td className={`py-2 px-3 whitespace-nowrap ${highlightClass}`}>
+                        <span className="font-medium">{d.dayName}</span> {d.dayNumber.toString().padStart(2, '0')} {currentDateToMonthShort(d.dateObj)}
+                      </td>
+                      <td className="py-2 px-3">
+                         {r?.checkIn ? toEgyptTimeOnly(r.checkIn) : '—'}
+                      </td>
+                      <td className="py-2 px-3">
+                         {r?.checkOut ? toEgyptTimeOnly(r.checkOut) : '—'}
+                      </td>
+                      <td className="py-2 px-3 text-center">
+                         {r?.totalHours ? `${r.totalHours.toFixed(2)}h` : '—'}
+                      </td>
+                      <td className="py-2 px-3 text-center">
+                         {r?.lateMinutes ? `${r.lateMinutes} min` : '0'}
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                         {r?.deductionValue ? `-${r.deductionValue.toFixed(2)} EGP` : '—'}
+                      </td>
+                      <td className="py-2 px-3 text-center">
+                         {r?.overtimeMinutes ? `${r.overtimeMinutes} min` : '0'}
+                      </td>
+                      <td className="py-2 px-3 text-right text-xs font-semibold">
+                         <span className={
+                           d.status === 'ABSENT' ? 'text-red-600' :
+                           d.status === 'LATE' ? 'text-amber-600' :
+                           d.status === 'OFF' ? 'text-gray-400' :
+                           'text-green-600'
+                         }>
+                           {d.status}
+                         </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot className="bg-gray-50 font-bold border-t-2 text-gray-900 border-gray-200">
+                <tr>
+                  <td className="py-3 px-3">Total</td>
+                  <td className="py-3 px-3 text-gray-400">—</td>
+                  <td className="py-3 px-3 text-gray-400">—</td>
+                  <td className="py-3 px-3 text-center">{totalHoursSum > 0 ? `${totalHoursSum.toFixed(2)}h` : '—'}</td>
+                  <td className="py-3 px-3 text-center">{totalLateMins} min</td>
+                  <td className="py-3 px-3 text-right text-red-600">{totalDeductionVal > 0 ? `-${totalDeductionVal.toFixed(2)} EGP` : '—'}</td>
+                  <td className="py-3 px-3 text-center">{totalOvertimeMins} min</td>
+                  <td className="py-3 px-3 text-gray-400 text-right">—</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </section>
+
         {/* Notes */}
         {summary.notes && (
-          <section className="mb-6">
+          <section className="mb-6 page-break-avoid">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
               Notes
             </h2>
@@ -165,7 +310,7 @@ export default async function PayslipPage({
         )}
 
         {/* Footer */}
-        <div className="border-t pt-4 text-xs text-gray-400 flex justify-between">
+        <div className="border-t pt-4 text-xs text-gray-400 flex justify-between page-break-avoid">
           <span>Generated: {new Date().toLocaleDateString('en-GB', { timeZone: 'Africa/Cairo' })}</span>
           <span>This is a system-generated payslip</span>
         </div>
@@ -175,8 +320,13 @@ export default async function PayslipPage({
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          body { font-size: 12pt; background: white; }
-          .payslip { box-shadow: none !important; border: none !important; max-width: 100% !important; }
+          body { background: white; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .payslip { box-shadow: none !important; border: none !important; max-width: 100% !important; padding: 0 !important; }
+          .page-break-avoid { page-break-inside: avoid; }
+          table { page-break-inside: auto; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          thead { display: table-header-group; }
+          tfoot { display: table-footer-group; }
         }
       `}</style>
     </>
@@ -217,4 +367,8 @@ function SalaryRow({
       <span className={`font-semibold ${color}`}>{display}</span>
     </div>
   );
+}
+
+function currentDateToMonthShort(d: Date) {
+  return d.toLocaleDateString('en-US', { month: 'short' });
 }

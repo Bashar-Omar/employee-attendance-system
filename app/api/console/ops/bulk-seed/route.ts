@@ -4,22 +4,32 @@ import { calculateLateMinutes, calculateOvertimeMinutes } from '@/lib/payroll/ca
 import { findApplicableRule, calculateDailyDeductionAmount } from '@/lib/payroll/calculateDeduction';
 import { countWorkingDays } from '@/lib/payroll/calculateMonthlySummary';
 
+function randomTimeBetween(from: string, to: string): string {
+  const [fH, fM] = from.split(':').map(Number);
+  const [tH, tM] = to.split(':').map(Number);
+  const fromMins = fH * 60 + fM;
+  const toMins = tH * 60 + tM;
+  const randomMins = fromMins + Math.floor(Math.random() * (Math.max(toMins - fromMins, 0) + 1));
+  return `${String(Math.floor(randomMins / 60)).padStart(2, '0')}:${String(randomMins % 60).padStart(2, '0')}`;
+}
+
 export async function POST(req: Request) {
   const denied = await guardSuperAdminApi();
   if (denied) return denied;
 
   const {
     userId,
-    fromDate,        // "2024-01-01"
-    toDate,          // "2024-03-31"
-    checkInTime,     // "09:00"
-    checkOutTime,    // "17:00"
-    randomize,       // boolean 
-    skipExisting,    // boolean 
-    skipNonWorkingDays, // boolean 
+    fromDate,
+    toDate,
+    checkInFrom,
+    checkInTo,
+    checkOutFrom,
+    checkOutTo,
+    skipExisting,
+    skipNonWorkingDays,
   } = await req.json();
 
-  if (!userId || !fromDate || !toDate || !checkInTime || !checkOutTime) {
+  if (!userId || !fromDate || !toDate || !checkInFrom || !checkInTo || !checkOutFrom || !checkOutTo) {
     return Response.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
@@ -38,7 +48,7 @@ export async function POST(req: Request) {
   let skippedNonWorking = 0;
 
   for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' }); // "YYYY-MM-DD" natively in CA format but tied to Cairo
+    const dateStr = d.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' }); 
     const dayOfWeek = d.getDay();
 
     if (skipNonWorkingDays && !workDays.includes(dayOfWeek)) {
@@ -47,8 +57,11 @@ export async function POST(req: Request) {
     }
 
     if (skipExisting) {
-      const existing = await prisma.attendance.findUnique({
-        where: { userId_date: { userId, date: new Date(dateStr) } },
+      const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
+      const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+    
+      const existing = await prisma.attendance.findFirst({
+        where: { userId, date: { gte: dayStart, lte: dayEnd } },
       });
       if (existing) {
         skippedExisting++;
@@ -56,17 +69,8 @@ export async function POST(req: Request) {
       }
     }
 
-    // Apply random variation if enabled (±30 minutes)
-    const variance = randomize ? Math.floor(Math.random() * 61) - 30 : 0;
-
-    const [inH, inM] = checkInTime.split(':').map(Number);
-    const [outH, outM] = checkOutTime.split(':').map(Number);
-
-    const inTotalMins = Math.max(0, inH * 60 + inM + variance);
-    const outTotalMins = Math.max(0, outH * 60 + outM + variance);
-
-    const finalIn = `${String(Math.floor(inTotalMins / 60)).padStart(2, '0')}:${String(inTotalMins % 60).padStart(2, '0')}`;
-    const finalOut = `${String(Math.floor(outTotalMins / 60)).padStart(2, '0')}:${String(outTotalMins % 60).padStart(2, '0')}`;
+    const finalIn = randomTimeBetween(checkInFrom, checkInTo);
+    const finalOut = randomTimeBetween(checkOutFrom, checkOutTo);
 
     const checkIn = new Date(`${dateStr}T${finalIn}:00+02:00`);
     const checkOut = new Date(`${dateStr}T${finalOut}:00+02:00`);
@@ -82,7 +86,6 @@ export async function POST(req: Request) {
       overtimeMinutes = calculateOvertimeMinutes(checkOut, employee.shift.endTime, employee.shift.overtimeAfterMins);
 
       if (lateMinutes > 0 && employee.salary && employee.shift.deductionRules.length > 0) {
-        // approximate working days in that month
         const workingDaysCount = countWorkingDays(d.getFullYear(), d.getMonth() + 1, employee.shift.workDays);
         const rule = findApplicableRule(lateMinutes, false, employee.shift.deductionRules);
         if (rule) {

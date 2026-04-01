@@ -16,10 +16,12 @@ export default function BulkSeeder() {
   
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
-  const [checkInTime, setCheckInTime] = useState<string>('09:00');
-  const [checkOutTime, setCheckOutTime] = useState<string>('17:00');
+
+  const [checkInFrom, setCheckInFrom] = useState<string>('09:00');
+  const [checkInTo, setCheckInTo] = useState<string>('09:00');
+  const [checkOutFrom, setCheckOutFrom] = useState<string>('17:00');
+  const [checkOutTo, setCheckOutTo] = useState<string>('17:00');
   
-  const [randomize, setRandomize] = useState<boolean>(false);
   const [skipNonWorkingDays, setSkipNonWorkingDays] = useState<boolean>(true);
   const [skipExisting, setSkipExisting] = useState<boolean>(true);
   
@@ -28,17 +30,17 @@ export default function BulkSeeder() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/console/ops/users')
+    fetch('/api/console/ops/employees')
       .then(res => res.json())
       .then(data => {
         if(Array.isArray(data)) setUsers(data);
       })
-      .catch(err => console.error("Failed to fetch users", err));
+      .catch(err => console.error("Failed to fetch employees", err));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUserId || !fromDate || !toDate || !checkInTime || !checkOutTime) return;
+    if (!selectedUserId || !fromDate || !toDate || !checkInFrom || !checkInTo || !checkOutFrom || !checkOutTo) return;
 
     if (!confirm(`Are you sure you want to run the bulk seeder from ${fromDate} to ${toDate}?`)) return;
 
@@ -50,9 +52,10 @@ export default function BulkSeeder() {
       userId: selectedUserId,
       fromDate,
       toDate,
-      checkInTime,
-      checkOutTime,
-      randomize,
+      checkInFrom,
+      checkInTo,
+      checkOutFrom,
+      checkOutTo,
       skipExisting,
       skipNonWorkingDays,
     };
@@ -114,23 +117,36 @@ export default function BulkSeeder() {
              </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <div className="space-y-2">
-                 <label className="text-sm font-medium leading-none">Default Check-in (HH:mm)</label>
-                 <Input type="time" value={checkInTime} onChange={(e) => setCheckInTime(e.target.value)} required />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-4">
+             <div className="space-y-4">
+                 <label className="text-sm font-medium leading-none text-muted-foreground">Check-in Range (HH:mm)</label>
+                 <div className="grid grid-cols-2 gap-4">
+                   <div>
+                     <label className="text-xs">Earliest</label>
+                     <Input type="time" value={checkInFrom} onChange={(e) => setCheckInFrom(e.target.value)} required />
+                   </div>
+                   <div>
+                     <label className="text-xs">Latest</label>
+                     <Input type="time" value={checkInTo} onChange={(e) => setCheckInTo(e.target.value)} required />
+                   </div>
+                 </div>
              </div>
-             <div className="space-y-2">
-                 <label className="text-sm font-medium leading-none">Default Check-out (HH:mm)</label>
-                 <Input type="time" value={checkOutTime} onChange={(e) => setCheckOutTime(e.target.value)} required />
+             <div className="space-y-4">
+                 <label className="text-sm font-medium leading-none text-muted-foreground">Check-out Range (HH:mm)</label>
+                 <div className="grid grid-cols-2 gap-4">
+                   <div>
+                     <label className="text-xs">Earliest</label>
+                     <Input type="time" value={checkOutFrom} onChange={(e) => setCheckOutFrom(e.target.value)} required />
+                   </div>
+                   <div>
+                     <label className="text-xs">Latest</label>
+                     <Input type="time" value={checkOutTo} onChange={(e) => setCheckOutTo(e.target.value)} required />
+                   </div>
+                 </div>
              </div>
           </div>
 
           <div className="space-y-4 pt-4 border-t">
-             <div className="flex items-center space-x-2">
-                <input type="checkbox" id="randomize" checked={randomize} onChange={e => setRandomize(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
-                <label htmlFor="randomize" className="text-sm font-medium">Randomize times (±30 min variation)</label>
-             </div>
-             
              <div className="flex items-center space-x-2">
                 <input type="checkbox" id="skipNonWorking" checked={skipNonWorkingDays} onChange={e => setSkipNonWorkingDays(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
                 <label htmlFor="skipNonWorking" className="text-sm font-medium">Skip non-working days (based on Shift)</label>

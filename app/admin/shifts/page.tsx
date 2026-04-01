@@ -2,21 +2,25 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Edit } from "lucide-react";
+import { Plus, Trash2, Edit, Edit2 } from "lucide-react";
 import Link from "next/link";
 
 export default function ShiftsPage() {
   const [shifts, setShifts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
+  const [editMode, setEditMode] = useState<string | null>(null);
+
+  const defaultForm = {
     name: "",
     startTime: "09:00",
     endTime: "17:00",
     gracePeriodMins: 15,
     overtimeAfterMins: 30,
     workDays: "0,1,2,3,4"
-  });
+  };
+
+  const [formData, setFormData] = useState(defaultForm);
 
   const fetchShifts = async () => {
     try {
@@ -36,11 +40,33 @@ export default function ShiftsPage() {
     fetchShifts();
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const openEditModal = (shift: any) => {
+    setEditMode(shift.id);
+    setFormData({
+      name: shift.name,
+      startTime: shift.startTime,
+      endTime: shift.endTime,
+      gracePeriodMins: shift.gracePeriodMins,
+      overtimeAfterMins: shift.overtimeAfterMins,
+      workDays: shift.workDays
+    });
+    setShowModal(true);
+  };
+
+  const openCreateModal = () => {
+    setEditMode(null);
+    setFormData(defaultForm);
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/shifts", {
-        method: "POST",
+      const url = editMode ? `/api/shifts/${editMode}` : "/api/shifts";
+      const method = editMode ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
       });
@@ -48,7 +74,7 @@ export default function ShiftsPage() {
         setShowModal(false);
         fetchShifts();
       } else {
-        alert("Failed to create shift");
+        alert(`Failed to ${editMode ? 'update' : 'create'} shift`);
       }
     } catch (e) {
       console.error(e);
@@ -89,7 +115,7 @@ export default function ShiftsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Shifts</h1>
           <p className="text-muted-foreground">Manage employee working schedules and grace periods.</p>
         </div>
-        <Button onClick={() => setShowModal(true)} className="gap-2">
+        <Button onClick={openCreateModal} className="gap-2">
           <Plus className="h-4 w-4" />
           New Shift
         </Button>
@@ -133,14 +159,17 @@ export default function ShiftsPage() {
                     </td>
                     <td className="p-6 align-middle">
                       <span className="inline-flex rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold tracking-tight text-blue-700">
-                        {shift.deductionRules?.length || 0} Rules
+                         {shift.deductionRules?.length || 0} Rules
                       </span>
                     </td>
                     <td className="p-6 align-middle text-right">
                       <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => openEditModal(shift)}>
+                          <Edit2 className="h-3.5 w-3.5" /> Edit
+                        </Button>
                         <Link href={`/admin/shifts/${shift.id}`}>
                           <Button variant="outline" size="sm" className="h-8 gap-1">
-                            <Edit className="h-3.5 w-3.5" /> Configure
+                            <Edit className="h-3.5 w-3.5" /> Configure Rules
                           </Button>
                         </Link>
                         <Button variant="destructive" size="sm" className="h-8 w-8 p-0" onClick={() => handleDelete(shift.id)}>
@@ -159,8 +188,8 @@ export default function ShiftsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-background rounded-xl shadow-xl w-full max-w-md p-6">
-            <h2 className="text-xl font-bold mb-4">Create New Shift</h2>
-            <form onSubmit={handleCreate} className="space-y-4">
+            <h2 className="text-xl font-bold mb-4">{editMode ? 'Edit Shift' : 'Create New Shift'}</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Shift Name</label>
                 <input 
@@ -227,7 +256,7 @@ export default function ShiftsPage() {
 
               <div className="flex justify-end gap-3 mt-6">
                 <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-                <Button type="submit">Create Shift</Button>
+                <Button type="submit">{editMode ? 'Save Changes' : 'Create Shift'}</Button>
               </div>
             </form>
           </div>

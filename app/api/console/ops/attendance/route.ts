@@ -1,5 +1,6 @@
 import prisma from '@/lib/db/prisma';
 import { guardSuperAdminApi } from '@/lib/auth/superAdmin';
+import { calculateLateMinutes, calculateOvertimeMinutes } from '@/lib/payroll/calculateLate';
 
 // GET — look up an existing attendance record by userId + date
 export async function GET(req: Request) {
@@ -14,8 +15,14 @@ export async function GET(req: Request) {
     return Response.json({ error: 'userId and date are required' }, { status: 400 });
   }
 
-  const record = await prisma.attendance.findUnique({
-    where: { userId_date: { userId, date: new Date(date) } },
+  const dayStart = new Date(`${date}T00:00:00.000Z`);
+  const dayEnd = new Date(`${date}T23:59:59.999Z`);
+
+  const record = await prisma.attendance.findFirst({
+    where: {
+      userId,
+      date: { gte: dayStart, lte: dayEnd },
+    },
   });
 
   return Response.json(record ?? null);
@@ -41,10 +48,11 @@ export async function POST(req: Request) {
     outLongitude,
     outStatus,
     outDistance,
-    lateMinutes,
-    overtimeMinutes,
     notes,
+    autoCalculate,
   } = body;
+  
+  let { lateMinutes, overtimeMinutes } = body;
 
   if (!userId || !date) {
     return Response.json({ error: 'userId and date are required' }, { status: 400 });
@@ -62,6 +70,21 @@ export async function POST(req: Request) {
     checkIn && checkOut
       ? (checkOut.getTime() - checkIn.getTime()) / 3600000
       : null;
+
+  if (autoCalculate) {
+    const employee = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { shift: true }
+    });
+    
+    if (employee?.shift && checkIn) {
+      lateMinutes = calculateLateMinutes(checkIn, employee.shift.startTime, employee.shift.gracePeriodMins);
+
+      if (checkOut) {
+        overtimeMinutes = calculateOvertimeMinutes(checkOut, employee.shift.endTime, employee.shift.overtimeAfterMins);
+      }
+    }
+  }
 
   const data = {
     status: status ?? 'PRESENT',
