@@ -1,12 +1,13 @@
 import prisma from '@/lib/db/prisma';
 import { auth } from '@/lib/auth';
+import { hasAdminAccess } from '@/lib/auth/adminGuard';
 import { NextResponse } from 'next/server';
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string; ruleId: string }> }) {
   try {
     const { ruleId } = await params;
     const session = await auth();
-    if (session?.user?.role !== 'ADMIN') {
+    if (!hasAdminAccess(session?.user?.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     const body = await req.json();
@@ -22,7 +23,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   try {
     const { ruleId } = await params;
     const session = await auth();
-    if (session?.user?.role !== 'ADMIN') {
+    if (!hasAdminAccess(session?.user?.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     await prisma.deductionRule.delete({ where: { id: ruleId } });

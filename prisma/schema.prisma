@@ -102,6 +102,8 @@ model Attendance {
   deductionValue   Float?    // actual EGP amount deducted that day (stored for audit)
   notes            String?
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
 }
 
 model MonthlySummary {

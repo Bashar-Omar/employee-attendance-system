@@ -1,5 +1,6 @@
 import prisma from '@/lib/db/prisma';
 import { auth } from '@/lib/auth';
+import { hasAdminAccess } from '@/lib/auth/adminGuard';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -16,7 +17,7 @@ export default async function PayslipPage({
   params: Promise<{ userId: string; year: string; month: string }>;
 }) {
   const session = await auth();
-  if (session?.user?.role !== 'ADMIN') redirect('/admin/dashboard');
+  if (!hasAdminAccess(session?.user?.role)) redirect('/admin/dashboard');
 
   const { userId, year: yearStr, month: monthStr } = await params;
   const year = parseInt(yearStr, 10);

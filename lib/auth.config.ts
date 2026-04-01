@@ -13,10 +13,10 @@ export const authConfig = {
       if (isOnDashboard) {
         if (isLoggedIn) {
              // Role based redirect check
-             if(nextUrl.pathname.startsWith("/admin") && auth.user.role !== "ADMIN") {
+             if(nextUrl.pathname.startsWith("/admin") && auth.user.role !== "ADMIN" && auth.user.role !== "SUPER_ADMIN") {
                  return Response.redirect(new URL("/employee/dashboard", nextUrl)) // Redirect employee trying to access admin
              }
-             if(nextUrl.pathname.startsWith("/employee") && auth.user.role === "ADMIN") {
+             if(nextUrl.pathname.startsWith("/employee") && (auth.user.role === "ADMIN" || auth.user.role === "SUPER_ADMIN")) {
                 // Admin shouldn't be in employee area? Task says "NO attendance records... Excluded from all attendance logic".
                 // "Can view ONLY their own attendance" - Admin has NO attendance.
                 // "Admin Dashboard (DEFAULT AFTER LOGIN)"
@@ -26,7 +26,7 @@ export const authConfig = {
         }
         return false // Redirect unauthenticated users to login page
       } else if (isLoggedIn && isOnLogin) {
-        if (auth.user.role === "ADMIN") {
+        if (auth.user.role === "ADMIN" || auth.user.role === "SUPER_ADMIN") {
              return Response.redirect(new URL("/admin/dashboard", nextUrl))
         }
         return Response.redirect(new URL("/employee/dashboard", nextUrl))

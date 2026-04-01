@@ -1,10 +1,11 @@
 import { auth } from '@/lib/auth';
+import { hasAdminAccess } from '@/lib/auth/adminGuard';
 import prisma from '@/lib/db/prisma';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (session?.user?.role !== 'ADMIN') {
+  if (!hasAdminAccess(session?.user?.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
